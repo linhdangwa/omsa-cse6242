@@ -151,8 +151,15 @@ def clean_trafficking_paths(itineraries: list) -> list:
             e.g., [('ADD', 'CAN'), ('BKK', 'HKG'), ('DOH', 'KUL'), ...]
     """
 
-    return NotImplemented
+    unique_pairs = set()
 
+    for itinerary in itineraries:
+        clean_stops = [stop for stop in itinerary if stop not in (None, "")]
+        for i in range(len(clean_stops) - 1):
+            pair = (clean_stops[i], clean_stops[i+1])
+            unique_pairs.add(pair)
+
+    return sorted(list(unique_pairs))
 
 def write_centrality_file(centrality: dict, path: str) -> None:
     """
@@ -177,9 +184,17 @@ def write_centrality_file(centrality: dict, path: str) -> None:
                               (should either be 'full_centrality.csv' or 'iwt_centrality.csv')
     """
 
-    return NotImplemented
+    sorted_nodes = sorted(centrality.items(), key=lambda item:(-items[1], item[0]]))
 
+    with open(path, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
 
+        writer.writerow(['iata', 'degree_centrality'])
+
+        for iata, score in sorted_nodes:
+            writer.writerow([iata, score])
+
+    return None
 
 if __name__ == "__main__":
 
@@ -191,7 +206,7 @@ if __name__ == "__main__":
     # Call get_data() to retrieve all airports from the API, and add all airports to the full-flight network.
     # --------------------------------------------------------------------------------------------------------
 
-    
+    get_data('./airports')
 
 
 
