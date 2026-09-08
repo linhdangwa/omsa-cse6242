@@ -26,7 +26,12 @@ class Graph:
         :param name: str - the name of the airport (e.g. 'Hong Kong International Airport')
         """
 
-        return NotImplemented
+        # self.nodes.append((iata, name)) if (iata, name) not in self.nodes else None
+
+        if not any(existing_iata == iata for existing_iata, _ in self.nodes):
+            self.nodes.append((iata, name))
+
+        return None
 
 
     def add_edge(self, iata_a: str, iata_b: str) -> None:
@@ -39,7 +44,10 @@ class Graph:
         :param iata_b: str - IATA code of the other airport in the flight path
         """
 
-        return NotImplemented
+        if (iata_a, iata_b) not in self.edges and (iata_b, iata_a) not in self.edges:
+            self.edges.append((iata_a, iata_b))
+
+        return None
 
 
     def degree_centrality(self) -> dict:
@@ -69,7 +77,27 @@ class Graph:
         Note these examples are not the true centrality scores for those airports.
         """
 
-        return NotImplemented
+        N = len(self.nodes)
+
+        degrees = {iata: 0 for iata, _ in self.nodes}
+
+        for iata_a, iata_b in self.edges:
+            if iata_a not in degrees:
+                degrees[iata_a] = 0
+            if iata_b not in degrees:
+                degrees[iata_b] = 0
+                
+            degrees[iata_a] += 1
+            degrees[iata_b] += 1
+
+        centrality = {}
+        for iata, degree in degrees.items():
+            if N > 1:
+                centrality[iata] = round(degree / (N-1), 6)
+            else:
+                centrality[iata] = 0.0
+
+        return centrality
 
 
 def get_data(endpoint: str, host: str = 'localhost', port: int = 3000) -> list:
@@ -84,7 +112,13 @@ def get_data(endpoint: str, host: str = 'localhost', port: int = 3000) -> list:
     :rtype: list
     """
 
-    return NotImplemented
+    conn = http.client.HTTPConnection(host, port)
+    conn.request("GET", endpoint)
+    response = conn.getresponse()
+    raw_data = response.read().decode('utf-8')
+    conn.close()
+
+    return json.loads(raw_data)
 
 
 def clean_trafficking_paths(itineraries: list) -> list:
@@ -157,7 +191,7 @@ if __name__ == "__main__":
     # Call get_data() to retrieve all airports from the API, and add all airports to the full-flight network.
     # --------------------------------------------------------------------------------------------------------
 
-
+    
 
 
 
