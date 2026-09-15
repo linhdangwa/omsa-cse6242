@@ -8,7 +8,7 @@ import os
 #################################################################################
 
 ## Change to False to disable Sample
-SHOW = True
+SHOW = False
 
 ############### SAMPLE CLASS AND SQL QUERY ###########################
 ######################################################################
@@ -177,7 +177,7 @@ def part_3() -> str:
     ############### EDIT SQL STATEMENT ###################################
     query = """
         SELECT ROUND(
-            100 * SUM(CASE WHEN date BETWEEN '2018-01-01' AND '2020-12-31' THEN 1 ELSE 0 END) / COUNT(*),
+            100.0 * SUM(CASE WHEN date BETWEEN '2018-01-01' AND '2020-12-31' THEN 1 ELSE 0 END) / COUNT(*),
             2
         )
         FROM incidents;
@@ -272,7 +272,7 @@ def part_7_b() -> str:
     query = """
         SELECT
             strftime('%Y', date) as year,
-            COUNT(*) AS total_ppl_fined,
+            SUM(num_ppl_fined) AS total_ppl_fined,
             ROUND(SUM(fine), 2) AS total_fine_amount
         FROM fines
         GROUP BY year
