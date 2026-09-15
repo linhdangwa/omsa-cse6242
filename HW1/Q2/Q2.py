@@ -4,10 +4,11 @@ import sqlite3
 from sqlite3 import Error, Connection
 import csv
 from typing import Any
+import os
 #################################################################################
 
 ## Change to False to disable Sample
-SHOW = False
+SHOW = True
 
 ############### SAMPLE CLASS AND SQL QUERY ###########################
 ######################################################################
@@ -67,129 +68,249 @@ def execute_query_and_get_result(connection: Connection, query: str) -> Any:
 
 
 def GTusername() -> str:
-    gt_username = ""
+    gt_username = "ldang31"
     return gt_username
 
 
 def part_1_a_i() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """CREATE TABLE incidents (
+        report_id   text,
+        category    text,
+        date        text
+    );"""
     ######################################################################
     return query
 
 
 def part_1_a_ii() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """CREATE TABLE details (
+        report_id   text,
+        subject     text,
+        transport_mode  text,
+        detection   text
+    );"""
     ######################################################################
     return query
 
 
 def part_1_a_iii() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """CREATE TABLE outcomes (
+        report_id   text,
+        outcome     text,
+        num_ppl_fined   integer,
+        fine        real,
+        num_ppl_arrested    integer,
+        prison_time real,
+        prison_time_unit    text
+    );"""
     ######################################################################
     return query
 
 
 def part_1_b_i(connection: Connection, path: str) -> None:
     ############### CREATE IMPORT CODE BELOW ############################
-    pass
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        next(reader)
+        connection.executemany(
+            'INSERT INTO incidents VALUES (?, ?, ?)',
+            reader
+        )
     ######################################################################
 
 
 def part_1_b_ii(connection: Connection, path: str) -> None:
     ############### CREATE IMPORT CODE BELOW ############################
-    pass
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        next(reader)
+        connection.executemany(
+        "INSERT INTO details VALUES (?, ?, ?, ?)", 
+        reader
+    )
     ######################################################################
 
 
 def part_1_b_iii(connection: Connection, path: str) -> None:
     ############### CREATE IMPORT CODE BELOW ############################
-    pass
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        next(reader) 
+        connection.executemany(
+            "INSERT INTO outcomes VALUES (?, ?, ?, ?, ?, ?, ?)", 
+            reader
+        )
     ######################################################################
 
 
 def part_2_a() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        CREATE INDEX incident_index ON incidents(report_id);
+    """
     ######################################################################
     return query
 
 
 def part_2_b() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = query = """
+        CREATE INDEX detail_index ON details(report_id);
+    """
     ######################################################################
     return query
 
 
 def part_2_c() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        CREATE INDEX outcome_index ON outcomes(report_id);
+    """
     ######################################################################
     return query
 
 
 def part_3() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT ROUND(
+            100 * SUM(CASE WHEN date BETWEEN '2018-01-01' AND '2020-12-31' THEN 1 ELSE 0 END) / COUNT(*),
+            2
+        )
+        FROM incidents;
+    """
     ######################################################################
     return query
 
 
 def part_4() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT
+            transport_mode,
+            COUNT(*) AS count
+        FROM details
+        WHERE 
+            detection = 'Intelligence'
+            AND transport_mode IS NOT NULL
+            AND transport_mode != ''
+        GROUP BY
+            transport_mode
+        ORDER BY
+            COUNT(transport_mode) desc
+        LIMIT 3;
+    """
     ######################################################################
     return query
 
 
 def part_5() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT 
+            d.detection,
+            COUNT(*) AS count,
+            ROUND(AVG(o.num_ppl_arrested), 2) AS avg_ppl_arrested
+        FROM details d
+        INNER JOIN outcomes o on d.report_id = o.report_id
+        WHERE 
+            num_ppl_arrested >= 1
+        GROUP BY d.detection
+        HAVING COUNT(*) >= 100
+        ORDER BY avg_ppl_arrested DESC
+        LIMIT 3;
+    """
     ######################################################################
     return query
 
 
 def part_6() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT
+            i.category,
+            COUNT(*) AS count,
+            ROUND(AVG(CASE
+                WHEN o.prison_time_unit = 'Years' THEN o.prison_time * 365
+                WHEN o.prison_time_unit = 'Months' THEN o.prison_time * 30
+                WHEN o.prison_time_unit = 'Weeks' THEN o.prison_time * 7
+                WHEN o.prison_time_unit = 'Days' THEN o.prison_time
+                ELSE 0 END
+            ), 2) AS avg_prison_time_days
+        FROM outcomes o
+        INNER JOIN incidents i on o.report_id = i.report_id
+        GROUP BY i.category
+        HAVING COUNT(*) > 50
+        ORDER BY avg_prison_time_days DESC;
+    """
     ######################################################################
     return query
 
 
 def part_7_a() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        CREATE VIEW fines AS
+        SELECT
+            i.report_id,
+            i.date,
+            o.num_ppl_fined,
+            o.fine
+        FROM incidents i
+        INNER JOIN outcomes o on i.report_id = o.report_id
+        WHERE o.num_ppl_fined >= 1;
+    """
     ######################################################################
     return query
 
 
 def part_7_b() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT
+            strftime('%Y', date) as year,
+            COUNT(*) AS total_ppl_fined,
+            ROUND(SUM(fine), 2) AS total_fine_amount
+        FROM fines
+        GROUP BY year
+        ORDER BY total_fine_amount DESC
+        LIMIT 3;
+    """
     ######################################################################
     return query
 
 
 def part_8_a() -> str:
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        CREATE VIRTUAL TABLE incident_overviews
+        USING fts5(report_id, subject);
+    """
     ######################################################################
     return query
 
 
 def part_8_b() -> str:
     ############### EDIT SQL STATEMENT ############################
-    query = ""
+    query = """
+        INSERT INTO incident_overviews (report_id, subject)
+        SELECT report_id, subject
+        FROM details;
+    """
     ######################################################################
     return query
 
     
 def part_8_c():
     ############### EDIT SQL STATEMENT ###################################
-    query = ""
+    query = """
+        SELECT COUNT(*)
+        FROM incident_overviews
+        WHERE subject MATCH 'NEAR(dead pangolin, 2)';
+    """
     ######################################################################
     return query
 
