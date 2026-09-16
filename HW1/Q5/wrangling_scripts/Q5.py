@@ -8,7 +8,7 @@ import csv
 
 
 def username():
-    return 'gburdell3'
+    return 'ldang31'
 
 
 def data_wrangling(filter_class: str = None):
@@ -33,15 +33,15 @@ def data_wrangling(filter_class: str = None):
             table.append(row_data)
         
         # Programmatically get unique classes and sort alphabetically for dropdown - [2 point] Q5.4.a
-        dropdown_options = []
+        dropdown_options = sorted(list(set([row[1] for row in table])))
         
         # Filter, sort, and limit the table - [3 points] Q5.4.b
         # Filter the data by the class column (second column)
         if filter_class:
-            ...
+            table = [row for row in table if row[1] == filter_class]
         # Order table by the count column (last column) - don't need to worry about tiebreaks
-        ...
+        table.sort(key=lambda x: x[2], reverse=True)
         # Take only the first 10 rows
-        ...
+        table = table[:10]
     
     return header, table, dropdown_options

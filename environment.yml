@@ -8,4 +8,6 @@ dependencies:
   - pandas
   - requests
   - scikit-learn
-prefix: /Users/annlinh/opt/anaconda3/envs/cse6242
+  - pip
+  - pip:
+    - Flask
