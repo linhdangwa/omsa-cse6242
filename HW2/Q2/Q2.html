@@ -73,7 +73,26 @@ d3.dsv(",", "board_games.csv", function(d) {
       .data(links)
       .enter()
       .append("path")
-      .attr("class", function(d) { return "link " + d.type; });
+      .attr("class", function(d) { return "link " + d.type; })
+      .style("stroke", function(d) { 
+          return d.value === 0 ? "gray" : "green"; 
+      })
+      .style("stroke-width", function(d) { 
+          return d.value === 0 ? "2px" : "1px"; 
+      })
+      .style("stroke-dasharray", function(d) { 
+          return d.value === 0 ? "none" : "5, 5"; 
+      });
+
+  var nodeLabels = svg.append("g")
+      .attr("class", "labels")
+      .selectAll("text")
+      .data(force.nodes())
+      .enter().append("text")
+      .text(function(d) { return d.name; })
+      .style("font-weight", "bold")
+      .attr("dx", 12)
+      .attr("dy", -12);
 
   // define the nodes
   var node = svg.selectAll(".node")
@@ -109,6 +128,10 @@ d3.dsv(",", "board_games.csv", function(d) {
       node.attr("transform", function(d) {
           return "translate(" + d.x + "," + d.y + ")"; 
       });
+
+      nodeLabels
+          .attr("x", function(d) { return d.x; })
+          .attr("y", function(d) { return d.y; });
   };
 
   function dragstarted(d) {
