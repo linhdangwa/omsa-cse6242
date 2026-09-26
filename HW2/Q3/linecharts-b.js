@@ -1,9 +1,133 @@
 const vlSpec_b = {
   "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+
   // your spec goes here
+  "title": "Number of Ratings 2016–2020 with Rankings",
+  "width": 700,
+  "height": 400,
+  "data": {"url": "boardgame_ratings.csv" },
+  "transform": [
+    {
+      "fold": [
+        "Catan=count",
+        "Dominion=count",
+        "Codenames=count",
+        "Terraforming Mars=count",
+        "Gloomhaven=count",
+        "Magic: The Gathering=count",
+        "Dixit=count",
+        "Monopoly=count"
+      ],
+      "as": ["rawGameString", "valueNum"] 
+    },
+    {"calculate": "split(datum.rawGameString, '=')[0]", "as": "gameName"},
+    {"calculate": "parseInt(datum.valueNum)", "as": "valueNum"},
+    {"calculate": "datum[datum.gameName + '=rank']", "as": "rank"},
+    {"filter": "toDate(datum.date) >= toDate('2016-11-01') && toDate(datum.date) <= toDate('2020-08-31')"}
+  ],
+  "layer": [
+    {
+      "name": "lines",
+      "mark": "line",
+      "encoding": {
+        "x": {
+          "field": "date",
+          "type": "temporal",
+          "title": "Month",
+          "axis": {"format": "%b %y", "tickCount": {"interval": "month", "step": 3}}
+        },
+        "y": {
+          "field": "valueNum",
+          "type": "quantitative",
+          "title": "Num of Ratings"
+        },
+        "color": {
+          "field": "gameName",
+          "type": "nominal",
+          "scale": {"scheme": "category10"},
+          "legend": null
+        }
+      }
+    },
+    {
+      "name": "labels",
+      "mark": {"type": "text", "align": "left", "dx": 5},
+      "encoding": {
+        "x": {"field": "date", "type": "temporal", "aggregate": "max"},
+        "y": {"field": "valueNum", "type": "quantitative", "aggregate": {"argmax": "date"}},
+        "text": {"field": "gameName", "type": "nominal"},
+        "color": {"field": "gameName", "type": "nominal", "legend": null}
+      }
+    },
+    {
+      "name": "symbols",
+      "transform": [
+        {
+          "filter": {
+            "field": "gameName",
+            "oneOf": ["Catan", "Codenames", "Terraforming Mars", "Gloomhaven"]
+          }
+        },
+        {"filter": "month(datum.date) % 3 == 0"}
+      ],
+      "mark": {"type": "circle", "size": 350, "opacity": 1},
+      "encoding": {
+        "x": {"field": "date", "type": "temporal"},
+        "y": {"field": "valueNum", "type": "quantitative"},
+        "color": {"field": "gameName", "type": "nominal", "legend": null}
+      }
+    },
+    {
+      "name": "rank_labels",
+      "transform": [
+        {
+          "filter": {
+            "field": "gameName",
+            "oneOf": ["Catan", "Codenames", "Terraforming Mars", "Gloomhaven"]
+          }
+        },
+        {"filter": "month(datum.date) % 3 == 0"}
+      ],
+      "mark": {"type": "text", "align": "center", "baseline": "middle", "fontSize": 10, "color": "white"},
+      "encoding": {
+        "x": {"field": "date", "type": "temporal"},
+        "y": {"field": "valueNum", "type": "quantitative"},
+        "text": {"field": "rank", "type": "nominal"}
+      }
+    },
+    {
+      "name": "legend_symbols",
+      "data": {"values": [{}]},
+      "mark": {"type": "circle", "size": 350, "color": "gray", "opacity": 1},
+      "encoding": {
+        "x": {"value": 775},
+        "y": {"value": 375}
+      }
+    },
+    {
+      "name": "legend_labels",
+      "data": {"values": [{}]},
+      "mark": {"type": "text", "align": "center", "baseline": "middle", "fontSize": 10, "color": "white"},
+      "encoding": {
+        "x": {"value": 775},
+        "y": {"value": 375},
+        "text": {"datum": "rank"}
+      }
+    },
+    {
+      "name": "legend_title",
+      "data": {"values": [{}]},
+      "mark": {"type": "text", "align": "left", "baseline": "middle", "fontSize": 12, "color": "black"},
+      "encoding": {
+        "x": {"value": 710},
+        "y": {"value": 400},
+        "text": {"datum": "BoardGameGeek Rank"}
+      }
+    }
+  ]
 };
 
-vegaEmbed('#svg-b', vlSpec_b, { renderer: 'svg' }).catch(console.error);
+vegaEmbed('#svg-b', vlSpec_b, {renderer: 'svg' }).catch(console.error);
 
 function vega_lite_spec_b() {
   return vlSpec_b;
