@@ -46,10 +46,24 @@ d3.dsv(",", "board_games.csv", function(d) {
   links.forEach(function(link) {
       link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
       link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+
+      link.source.degree = (link.source.degree || 0) + 1;
+      link.target.degree = (link.target.degree || 0) + 1;
   });
 
   var width = 1200,
       height = 700;
+
+  var minDegree = d3.min(d3.values(nodes), function(d) { return d.degree; });
+  var maxDegree = d3.max(d3.values(nodes), function(d) { return d.degree; });
+
+  var radiusScale = d3.scaleSqrt()
+      .domain([minDegree, maxDegree])
+      .range([5, 20]); 
+
+  var colorScale = d3.scaleLinear()
+      .domain([minDegree, (minDegree + maxDegree) / 2, maxDegree])
+      .range(["#deebf7", "#9ecae1", "#3182bd"]);
 
   //DO NOT MODIFY THE BELOW BLOCK OF CODE//
   var force = d3.forceSimulation()
@@ -99,6 +113,7 @@ d3.dsv(",", "board_games.csv", function(d) {
       .data(force.nodes())
       .enter().append("g")
       .attr("class", "node")
+      .on("dblclick", dblclick)
       .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
@@ -109,7 +124,12 @@ d3.dsv(",", "board_games.csv", function(d) {
       .attr("id", function(d){
          return (d.name.replace(/\s+/g,'').toLowerCase());
       })
-      .attr("r", 5);
+      .attr("r", function(d) { 
+          return radiusScale(d.degree); 
+      })
+      .style("fill", function(d) { 
+          return colorScale(d.degree); 
+      });
 
   // add the curvy lines
   function tick() {
@@ -147,15 +167,29 @@ d3.dsv(",", "board_games.csv", function(d) {
 
   function dragended(d) {
       if (!d3.event.active) force.alphaTarget(0);
-      if (d.fixed == true) {
-          d.fx = d.x;
-          d.fy = d.y;
-      }
-      else {
-          d.fx = null;
-          d.fy = null;
-      }
+      d.fixed = true;
+      d.fx = d.x;
+      d.fy = d.y;
+
+      d3.select(this).select("circle").style("fill", "#ff7f0e");
   };
+
+  function dblclick(d) {
+      d.fixed = false;
+      d.fx = null;
+      d.fy = null;
+      
+      d3.select(this).select("circle").style("fill", colorScale(d.degree));
+  };
+
+  svg.append("text")
+      .attr("id", "credit")
+      .attr("x", width - 300) 
+      .attr("y", 30)
+      .style("text-anchor", "end")
+      .style("font-family", "sans-serif")
+      .style("font-size", "14px")
+      .text("ldang31");
   
 }).catch(function(error) {
   console.log(error);
