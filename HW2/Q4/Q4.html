@@ -4,7 +4,7 @@
   <title>Games Rating: 2015 - 2019</title>
   <meta charset="utf-8">
   <style>
-    <!-- define CSS rules -->
+    /* <!-- define CSS rules --> */
   </style>
 </head>
 
@@ -21,10 +21,14 @@
   <script>
     // define the dimensions and margins for the line chart
     // Use the Margin Convention referenced in the HW document to layout your graph
-
+    var margin = {top: 50, right: 50, bottom: 50, left: 50};
+    var width = 800 - margin.left - margin.right;
+    var height = 500 - margin.top - margin.bottom;
 
     // define the dimensions and margins for the bar chart
-
+    var barMargin = {top: 50, right: 50, bottom: 50, left: 120};
+    var barWidth = 800 - barMargin.left - barMargin.right;
+    var barHeight = 400 - barMargin.top - barMargin.bottom;
 
     // append svg element to the body of the page
     // set dimensions and position of the svg element
@@ -39,22 +43,265 @@
       .attr("transform",
         "translate(" + margin.left + "," + margin.top + ")");
 
-    // Fetch the data
-	var pathToCsv = "";
+    d3.select("body").append("div")
+        .attr("id", "bar_chart_title")
+        .style("display", "none")
+        .style("text-align", "center")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .style("width", (barWidth + barMargin.left + barMargin.right) + "px")
+        .style("margin-top", "20px");
 
+    var barChartSvg = d3.select("body").append("svg")
+        .attr("id", "bar_chart")
+        .attr("width", barWidth + barMargin.left + barMargin.right)
+        .attr("height", barHeight + barMargin.top + barMargin.bottom)
+        .style("display", "none");
+
+    var barContainer = barChartSvg.append("g")
+        .attr("id", "container_2")
+        .attr("transform", "translate(" + barMargin.left + "," + barMargin.top + ")");
+    
+    barContainer.append("g").attr("id", "bars");
+    barContainer.append("g").attr("id", "x-axis-bars");
+    barContainer.append("g").attr("id", "y-axis-bars");
+    barContainer.append("text").attr("id", "bar_x_axis_label");
+    barContainer.append("text").attr("id", "bar_y_axis_label");
+
+    // Fetch the data
+	  var pathToCsv = "average-rating.csv";
 
     d3.dsv(",", pathToCsv, function (d) {
       return {
         // format data attributes if required
+        name: d.name,
+        year: +d.year,
+        average_rating: Math.floor(+d.average_rating),
+        users_rated: +d.users_rated
       }
     }).then(function (data) {
       console.log(data); // you should see the data in your browser's developer tools console
 
       /* Create bar plot using data from csv */
+      var filteredData = data.filter(function(d) {
+        return d.year >= 2015 && d.year <= 2019;
+      });
+      
+      var maxRating = d3.max(filteredData, function(d) {
+        return d.average_rating;
+      });
 
+      var nestedData = d3.nest()
+        .key(function(d) {return d.year;})
+        .key(function(d) {return d.average_rating;})
+        .rollup(function(v) {return v.length;})
+        .entries(filteredData);
 
+      var finalData = [];
 
+      nestedData.forEach(function(yearGroup) {
+        var yearData = [];
+        var ratingMap = d3.map(yearGroup.values, function(d) {return d.key;});
+        
+        for (var i = 0; i <= maxRating; i++) {
+          var strI = String(i);
+          if (ratingMap.has(strI)) {
+            yearData.push({year: yearGroup.key, rating: i, count: ratingMap.get(strI).value});
+          } else {
+            yearData.push({year: yearGroup.key, rating: i, count: 0});
+          }
+        }
+        finalData.push({year: yearGroup.key, values: yearData});
+      });
 
+      var xScale = d3.scaleLinear()
+          .domain([0, maxRating])
+          .range([0, width]);
+
+      var maxCount = d3.max(finalData, function(d) {
+          return d3.max(d.values, function(v) {return v.count;});
+      });
+      
+      var yScale = d3.scaleLinear()
+          .domain([0, maxCount])
+          .range([height, 0]);
+
+      var line = d3.line()
+          .x(function(d) {return xScale(d.rating);})
+          .y(function(d) {return yScale(d.count);});
+
+      var years = finalData.map(function(d) {return d.year;});
+      var colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+          .domain(years);
+
+      var linesGroup = svg.append("g").attr("id", "lines");
+      
+      linesGroup.selectAll(".line")
+          .data(finalData)
+          .enter()
+          .append("path")
+          .attr("class", "line")
+          .attr("d", function(d) {return line(d.values);})
+          .style("fill", "none")
+          .style("stroke", function(d) {return colorScale(d.year);})
+          .style("stroke-width", 2);
+        
+      var flatData = [];
+      finalData.forEach(function(d) {
+          d.values.forEach(function(v) {
+              flatData.push({year: d.year, rating: v.rating, count: v.count});
+          });
+      });
+
+      var dotsGroup = svg.append("g").attr("id", "circles");
+
+      dotsGroup.selectAll("circle")
+          .data(flatData)
+          .enter()
+          .append("circle")
+          .attr("cx", function(d) {return xScale(d.rating);})
+          .attr("cy", function(d) {return yScale(d.count);})
+          .attr("r", 4)
+          .style("fill", function(d) {return colorScale(d.year);})
+          .on("mouseover", function(d) {
+              if (d.count === 0) {
+                  d3.select("#bar_chart").style("display", "none");
+                  return;
+              }
+
+              d3.select(this).attr("r", 8);
+              d3.select("#bar_chart").style("display", "block");
+              d3.select("#bar_chart_title").style("display", "block");
+
+              var barData = filteredData.filter(function(row) {
+                  return row.year == d.year && row.average_rating == d.rating;
+              });
+
+              barData.sort(function(a, b) {return b.users_rated - a.users_rated;});
+              barData = barData.slice(0, 5);
+
+              barData.forEach(function(row) {
+                  row.truncName = row.name.substring(0, 10);
+              });
+
+              d3.select("#bars").selectAll("*").remove();
+
+              var xBar = d3.scaleLinear()
+                  .domain([0, d3.max(barData, function(row) {return row.users_rated;})])
+                  .range([0, barWidth]);
+
+              var yBar = d3.scaleBand()
+                  .domain(barData.map(function(row) {return row.truncName;}))
+                  .range([0, barHeight])
+                  .padding(0.2);
+
+              d3.select("#bar_chart_title")
+                  .text("Top 5 Most Rated Games of " + d.year + " with Rating " + d.rating);
+
+              d3.select("#x-axis-bars")
+                  .attr("transform", "translate(0," + barHeight + ")")
+                  .call(d3.axisBottom(xBar).tickSize(-barHeight))
+                  .selectAll("line")
+                  .style("stroke", "#e0e0e0");
+
+              d3.select("#x-axis-bars").selectAll("path").style("stroke", "none");
+
+              d3.select("#bar_x_axis_label")
+                  .attr("x", barWidth / 2)
+                  .attr("y", barHeight + 40)
+                  .style("text-anchor", "middle")
+                  .text("Number of users");
+
+              d3.select("#y-axis-bars")
+                  .call(d3.axisLeft(yBar));
+
+              d3.select("#bar_y_axis_label")
+                  .attr("transform", "rotate(-90)")
+                  .attr("y", -100)
+                  .attr("x", -(barHeight / 2))
+                  .style("text-anchor", "middle")
+                  .text("Games");
+
+              d3.select("#bars").selectAll(".bar")
+                  .data(barData)
+                  .enter()
+                  .append("rect")
+                  .attr("class", "bar")
+                  .attr("x", 0)
+                  .attr("y", function(row) {return yBar(row.truncName);})
+                  .attr("width", function(row) {return xBar(row.users_rated);})
+                  .attr("height", yBar.bandwidth())
+                  .style("fill", "steelblue"); 
+          })
+          .on("mouseout", function(d) {
+              d3.select(this).attr("r", 4);
+              d3.select("#bar_chart").style("display", "none");
+              d3.select("#bar_chart_title").style("display", "none");
+          });
+
+      svg.append("text")
+          .attr("id", "line_chart_title")
+          .attr("x", width / 2)
+          .attr("y", -25)
+          .style("text-anchor", "middle")
+          .style("font-size", "18px")
+          .text("Board games by Rating 2015-2019");
+
+      svg.append("text")
+          .attr("id", "credit")
+          .attr("x", width / 2)
+          .attr("y", -5)
+          .style("text-anchor", "middle")
+          .style("font-size", "14px")
+          .style("fill", "blue")
+          .style("font-weight", "bold")
+          .text("ldang31");
+
+      var legend = svg.append("g")
+          .attr("id", "legend")
+          .attr("transform", "translate(" + (width - 30) + ", 0)");
+
+      legend.selectAll("circle")
+          .data(years)
+          .enter()
+          .append("circle")
+          .attr("cx", 0)
+          .attr("cy", function(d, i) {return i * 20;})
+          .attr("r", 4)
+          .style("fill", function(d) {return colorScale(d);});
+
+      legend.selectAll("text")
+          .data(years)
+          .enter()
+          .append("text")
+          .attr("x", 10)
+          .attr("y", function(d, i) {return (i * 20) + 4;})
+          .style("font-size", "12px")
+          .text(function(d) {return d;});
+      
+      svg.append("g")
+          .attr("id", "x-axis-lines")
+          .attr("transform", "translate(0," + height + ")")
+          .call(d3.axisBottom(xScale));
+
+      svg.append("text")
+          .attr("id", "line_x_axis_label")
+          .attr("x", width / 2)
+          .attr("y", height + 40)
+          .style("text-anchor", "middle")
+          .text("Rating");
+
+      svg.append("g")
+          .attr("id", "y-axis-lines")
+          .call(d3.axisLeft(yScale));
+
+      svg.append("text")
+          .attr("id", "line_y_axis_label")
+          .attr("transform", "rotate(-90)")
+          .attr("y", -40)
+          .attr("x", -(height / 2))
+          .style("text-anchor", "middle")
+          .text("Count");
     }).catch(function (error) {
       console.log(error);
     });
