@@ -2,12 +2,28 @@
 <meta charset="utf-8">
 <head>
     <!-- add title -->
-    
+    <title>HW2 Q5 - Choropleth Map</title>
+
     <!-- import required libraries here -->
+    <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-legend.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-tip.min.js"></script>
+    <script type="text/javascript" src="../lib/topojson.v2.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-geo-projection.v2.min.js"></script>
     
     <style>
         /* define CSS rules here */
-    
+        body {font-family: sans-serif;}
+
+        .d3-tip{
+            background-color: #333333;
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 4px;
+            line-height: 1.5;
+            pointer-events: none;
+        }
     </style>
 
     <title></title>
@@ -16,35 +32,68 @@
 
 <body>
     <!-- Add heading for the visualization -->
-    
+    <h2>Global Wildlife Trafficking Incidents</h2>
+
     <!-- Create dropdown element here. Options should be added after reading in wildlife_trafficking file, they should not be created here.-->
+    <select id="yearDropdown"></select>
 
-
-    <script>
+    <script type="text/javascript">
     
         // enter code to define margin and dimensions for svg
-        
+        var margin = {top:50, right:150, bottom:50, left:50},
+            width = 960 - margin.left - margin.right,
+            height = 600 - margin.top - margin.bottom;
+
         // enter code to create svg
-        
+        var svg = d3.select("body").append("svg")
+            .attr("id", "choropleth")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom);
+
+        var mapContainer = svg.append("g")
+            .attr("id", "countries")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
         // enter code to create color scale
-        
+        var colorScheme = ["#fee5d9", "#fcae91", "#fb6a4a", "#cb181d"];
+        var colorScale = d3.scaleQuantile().range(colorScheme);
+
+        svg.append("text")
+            .attr("id", "credit")
+            .attr("x", width / 2)
+            .attr("y", height + margin.top)
+            .style("text-anchor", "middle")
+            .text("ldang31");
+
         // enter code to define tooltip
+        var tip = d3.tip()
+            .attr("class", "d3-tip")
+            .attr("id", "tooltip")
+            .offset([-10, 0])
+            .html(function(d){return "<strong>Country: </strong><span class='details'>" + d.properties.name + "<br></span>";});
+        
+        svg.call(tip);
         
         // enter code to define projection and path required for Choropleth
         // For grading, set the name of functions for projection and path as "projection" and "path"
-        // var projection = 
-        // var path =
+        var projection = d3.geoNaturalEarth1()
+            .scale(150)
+            .translate([width / 2, height / 2]);
 
+        var path = d3.geoPath().projection(projection);
 
         // define any other global variables 
 
         Promise.all([
             // enter code to read files
-            
-        ]).then(
+            d3.json("./data/world_countries.json"),
+            d3.csv("./data/wildlife_trafficking.csv")
+        ]).then(function(data){
             // enter code to call ready() with required arguments
-            
-        );
+            ready(null, data[0], data[1]);
+        }).catch(function(error){
+            console.log(error);
+        });
         
         // this function should be called once the data from files have been read
         // world: topojson from world_countries.json
@@ -52,19 +101,133 @@
         
         function ready(error, world, traffickingData) {
             // enter code to extract required fields from traffickingData
+            var years = d3.map(traffickingData, function(d){return d.Year;}).keys().sort();
 
             // enter code to append the years to the dropdown
+            var dropdown = d3.select("#yearDropdown");
             
+            dropdown.selectAll("option")
+                .data(years)
+                .enter()
+                .append("option")
+                .text(function(d){return d;})
+                .attr("value", function(d){return d;});
+
             // event listener for the dropdown. Update choropleth and legend when selection changes. Call createMapAndLegend() with required arguments.
-            
+            dropdown.on("change", function(){
+                var selectedYear = d3.select(this).property("value");
+                createMapAndLegend(world, traffickingData, selectedYear);
+            });
+
             // create Choropleth with default option. Call createMapAndLegend() with required arguments. 
+            var defaultYear = years[0];
+            createMapAndLegend(world, traffickingData, defaultYear);
         }
 
         // this function should create a Choropleth and legend using the world and traffickingData arguments for a selectedYear
         // also use this function to update Choropleth and legend when a different year is selected from the dropdown
         function createMapAndLegend(world, traffickingData, selectedYear){ 
-        
+            var yearData = traffickingData.filter(function(d){return d.Year === selectedYear;});
+            var dataDict = {};
+            var incidentCounts = [];
+
+            yearData.forEach(function(d){
+                if(d['Number_of_Incidents'] !== undefined && d['Number_of_Incidents'] !== ""){
+                    var count = +d['Number_of_Incidents'];
+                    incidentCounts.push(count);
+
+                    dataDict[d['Country of Incident']] = {
+                        incidents: count,
+                        fine: d['Average_Fine'],
+                        imprisonment: d['Average_Imprisonment']
+                    };
+                }
+            });
+
+            // country color scale
+            colorScale.domain(incidentCounts);
+
+            tip.html(function(d){
+                var countryInfo = dataDict[d.properties.name];
+                var incidents = "N/A";
+                var fine = "N/A";
+                var imprisonment = "N/A";
+
+                if(countryInfo !== undefined && countryInfo.incidents !== undefined){
+                    incidents = countryInfo.incidents;
+                    
+                    if(countryInfo.fine !== undefined && countryInfo.fine !== ""){
+                        fine = d3.format(".2f")(+countryInfo.fine);
+                    }
+                    
+                    if(countryInfo.imprisonment !== undefined && countryInfo.imprisonment !== ""){
+                        imprisonment = d3.format(".2f")(+countryInfo.imprisonment);
+                    }
+                }
+
+                return "Country: " + d.properties.name + "<br>" +
+                       "Year: " + selectedYear + "<br>" +
+                       "Number of Incidents: " + incidents + "<br>" +
+                       "Average Fine (USD): " + fine + "<br>" +
+                       "Average Imprisonment (Years): " + imprisonment;
+            });
+
+            var countries = mapContainer.selectAll("path")
+                .data(world.features);
+
+            countries.enter()
+                .append("path")
+                .merge(countries)
+                .attr("d", path)
+                .attr("class", "country")
+                .style("stroke", "#fff")
+                .style("stroke-width", "0.5px")
+                .style("fill", function(d){
+                    var countryInfo = dataDict[d.properties.name];
+                    if(countryInfo !== undefined && countryInfo.incidents !== undefined){
+                        return colorScale(countryInfo.incidents);
+                    } else {
+                        return "gray";
+                    }
+                })
+                .on('mouseover', function(d){
+                    tip.show.call(this, d);
+                    
+                    // not a requirement, but following example figure 12, tried dimming all other countries on hover
+                    d3.selectAll(".country")
+                        .style("opacity", 0.3);
+                        
+                    d3.select(this)
+                        .style("opacity", 1)
+                        .style("stroke", "black")
+                        .style("stroke-width", "1.5px");
+                })
+                .on('mouseout', function(d){
+                    tip.hide.call(this, d);
+                    
+                    d3.selectAll(".country")
+                        .style("opacity", 1)
+                        .style("stroke", "#fff")
+                        .style("stroke-width", "0.5px");
+                });
+
+            countries.exit().remove();
+
+            // legend
+            svg.selectAll("#legend").remove();
             
+            var legendContainer = svg.append("g")
+                .attr("id", "legend")
+                .attr("transform", "translate(" + width + "," + margin.top + ")");
+
+            var choroplethLegend = d3.legendColor()
+                .labelFormat(d3.format(".2f"))
+                .shape("rect")
+                .shapeWidth(15)
+                .shapeHeight(15)
+                .scale(colorScale);
+
+            legendContainer.call(choroplethLegend);
         }
     </script>
 
