@@ -1,0 +1,11 @@
+name: cse6242_project
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pandas
+  - pyarrow
+  - jupyter
+  - scikit-learn
+  - pip
